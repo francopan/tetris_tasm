@@ -82,17 +82,32 @@ GENERATE_RANDOM proc ; Return AL
     push CX
     push DX
     
-    MOV AH, 00h  ; interrupts to get system time        
-    INT 1AH      ; CX:DX now hold number of clock ticks since midnight      
-    mov  ax, dx
-    xor  dx, dx
-    mov  cx, 6    
-    div  cx       ; here dx contains the remainder of the division - from 0 to 6
-    add  dl, '0'  ; to ascii from '0' to '6'
-    xor  ax, ax
-    mov  al, dl
-    sub  al, '0'
+    ;MOV AH, 00h  ; interrupts to get system time        
+    ;INT 1AH      ; CX:DX now hold number of clock ticks since midnight      
+    ;mov  ax, dx
+    ;xor  dx, dx
+    ;mov  cx, 6    
+    ;div  cx       ; here dx contains the remainder of the division - from 0 to 6
+    ;add  dl, '0'  ; to ascii from '0' to '6'
+    ;xor  ax, ax
+    ;mov  al, dl
+    ;sub  al, '0'
     
+    mov AX, 0605h
+    mov BX, 0000h
+    mov CX, 021Ch
+    mov DX, 0621h
+    int 10h
+    
+    mov  AX, 0h
+    int  1Ah
+    
+    mov  AX, DX
+    mov  CX, 7h
+    mov  DX, 0h
+    div  CX
+    mov  AX, DX
+
     pop DX
     pop CX
     pop BX
@@ -255,7 +270,7 @@ PEGAR_POSICAO_PECA proc
 ret
 endp
 
-GAMEPLAY proc
+ADD_PROX_PECA proc
     ; Adiciona Proxima Peca na tela
     PushAXBXCXDX
     mov SI, offset PROX_PECA_NUM
@@ -270,8 +285,14 @@ GAMEPLAY proc
     mov [SI], DL
     call IMP_PECA
     PopAXBXCXDX
-    
     call GERAR_PROXIMA_PECA
+ret
+endp
+
+GAMEPLAY proc
+    
+    call DELAY
+    call ADD_PROX_PECA
 
     call PEGAR_POSICAO_PECA
     mov CX,20d
@@ -283,6 +304,8 @@ GAMEPLAY proc
         mov AH,0
         call IMP_PECA
     loop loop_cai_peca
+    call DELAY
+    call ADD_PROX_PECA
 ret
 endp
 
