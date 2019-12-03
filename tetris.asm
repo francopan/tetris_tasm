@@ -66,6 +66,27 @@ PopAXBXCXDX macro
     PopAXBXCX 
 endm
 
+GENERATE_RANDOM proc ; Return AL
+    push BX
+    push CX
+    push DX
+    
+    MOV AH, 00h  ; interrupts to get system time        
+    INT 1AH      ; CX:DX now hold number of clock ticks since midnight      
+    mov  ax, dx
+    xor  dx, dx
+    mov  cx, 6    
+    div  cx       ; here dx contains the remainder of the division - from 0 to 6
+    add  dl, '0'  ; to ascii from '0' to '6'
+    xor  ax, ax
+    mov  al, dl
+    sub  al, '0'
+    
+    pop DX
+    pop CX
+    pop BX
+    ret
+endp
 
 CHAR_DISPLAY proc  ; Proc que imprime na tela UM caractere em determinada cor (BL)
     PushAXBXCX
@@ -87,7 +108,7 @@ GOTO_XY proc   ;Macro que seta o cursor em uma posicao X [BL],Y [BH]  AH=02h    
     ret
 endp
 
-IMP_PECA proc ; SI  = offset peca ; DH = linha da peca; DL = coluna da peca; BL = cor da peca
+IMP_PECA_GENERICO proc ; SI  = offset peca ; DH = linha da peca; DL = coluna da peca; BL = cor da peca
   PushAXBXCXDX
    mov CX,4
    imprime_peca:
@@ -99,6 +120,85 @@ IMP_PECA proc ; SI  = offset peca ; DH = linha da peca; DL = coluna da peca; BL 
   ret
 endp
 
+IMP_PECA_T proc
+    push BX
+    mov SI, OFFSET PECA_T
+    mov BL, 04h
+    call IMP_PECA_GENERICO
+    pop BX
+ret
+endp
+
+IMP_PECA_S proc
+    push BX
+    mov SI, OFFSET PECA_S
+    mov BL, 06h
+    call IMP_PECA_GENERICO
+    pop BX
+ret
+endp
+
+IMP_PECA_Z proc
+    push BX
+    mov SI, OFFSET PECA_Z
+    mov BL, 0Eh
+    call IMP_PECA_GENERICO
+    pop BX
+ret
+endp
+
+IMP_PECA_I proc
+    push BX
+    mov SI, OFFSET PECA_I
+    mov BL, 02h
+    call IMP_PECA_GENERICO
+    pop BX
+ret
+endp
+
+IMP_PECA_O proc
+    push BX
+    mov SI, OFFSET PECA_O
+    mov BL, 03h
+    call IMP_PECA_GENERICO
+    pop BX
+ret
+endp
+
+IMP_PECA_L proc
+    push BX
+    mov SI, OFFSET PECA_L
+    mov BL, 01h
+    call IMP_PECA_GENERICO
+    pop BX
+ret
+endp
+
+IMP_PECA_J proc
+    push BX
+    mov SI, OFFSET PECA_J
+    mov BL, 09h
+    call IMP_PECA_GENERICO
+    pop BX
+ret
+endp
+
+IMP_PECA proc ; al = peca
+    cmp  AL, 00d
+    je   IMP_PECA_T
+    cmp  AL, 01d
+    je   IMP_PECA_S
+    cmp  AL, 02d
+    je   IMP_PECA_Z
+    cmp  AL, 03d
+    je   IMP_PECA_I
+    cmp  AL, 04d
+    je   IMP_PECA_O
+    cmp  AL, 05h
+    je   IMP_PECA_L
+    jmp  IMP_PECA_J
+ret
+endp
 
 IMP_STRING proc ; Proc recebe a palavra, posicao e cor para imprimir na tela [SI palavra, DH posx, DL posy, BL cor]
     PushAXBXCXDX
@@ -128,13 +228,21 @@ LIMPAR_TELA proc  ; Essa proc limpa a tela do usuario
     ret
 endp
 
+GERAR_PROXIMA_PECA proc
+    PushAXBXCXDX
+    call GENERATE_RANDOM
+    mov  DH, 02h
+    mov  DL, 1Dh
+    call IMP_PECA
+    PopAXBXCXDX
+ret
+endp
 
 TELA_JOGO proc
-    PushAXBXCXDX
-    
+    PushAXBXCXDX   
     call LIMPAR_TELA
     
-  ; Exibe Score (Pontuacao)
+    ; Exibe Score (Pontuacao)
     mov SI, offset SCORE_JOGO
     mov DH, 02h
     mov DL, 04h
@@ -154,6 +262,7 @@ TELA_JOGO proc
     call IMP_STRING
     mov DL, 0Ch
     mov DH, 18h
+    mov  SI, offset BASE_JOGO
     call IMP_STRING
     
     ; Linhas Laterais Jogo
@@ -168,14 +277,15 @@ TELA_JOGO proc
         call IMP_STRING
         loop LOOP_TELA_JOGO
     
-    ; Linha Superior e inferior Caixa Proxima Pe?a    
+    ; Linha Superior e inferior Caixa Proxima Peca    
     mov  SI, offset BASE_CAIXA_PECA
     mov  DH, 1h
     mov  DL, 1Bh
     call IMP_STRING
+    mov  SI, offset BASE_CAIXA_PECA
     mov DH, 08h
     call IMP_STRING
-    
+   
     mov CX,06h
     LOOP_TELA_CAIXA:
     mov  SI, offset LATERAL_CAIXA_PECA  
@@ -184,8 +294,10 @@ TELA_JOGO proc
         dec  CL
         call IMP_STRING
         loop LOOP_TELA_CAIXA
-    
-    
+
+    ; Imprime Primeira Peca
+    call GERAR_PROXIMA_PECA
+
     PopAXBXCXDX
     ret
 endp
@@ -203,41 +315,33 @@ TELA_INICIAL proc
    call IMP_STRING
   
    ; Exibe Tetraminos
-   mov SI, OFFSET PECA_T
-   mov BL, 04h
    mov DH, 06h
    mov DL, 06h
-   call IMP_PECA
+   mov AL, 00h
+   call IMP_PECA ; Imprime J
    
-   mov SI, OFFSET PECA_S
-   mov BL, 06h
-   mov DH, 06h
    mov DL, 0Bh
+   inc AL
    call IMP_PECA   
    
-   mov SI, OFFSET PECA_Z
-   mov BL, 0Eh
    mov DL, 0Fh
+   inc AL
    call IMP_PECA
    
-   mov SI, OFFSET PECA_I
-   mov BL, 02h
    mov DL, 13h
+   inc AL
    call IMP_PECA
    
-   mov SI, OFFSET PECA_O
-   mov BL, 03h
    mov DL, 17h
+   inc AL
    call IMP_PECA
    
-   mov SI, OFFSET PECA_L
-   mov BL, 01h
    mov DL, 1Eh
+   inc AL
    call IMP_PECA
    
-   mov SI, OFFSET PECA_J
-   mov BL, 09h
    mov DL, 1Bh
+   inc AL
    call IMP_PECA
    
    mov SI, offset JOGAR ; Opcao de Jogar
@@ -273,7 +377,7 @@ TELA_INICIAL proc
    loopne LEITURA_MENU
 
    COMECA_JOGO:
-    call TELA_JOGO
+   call TELA_JOGO
        
    FINALIZOU:
  
@@ -294,11 +398,11 @@ MAIN:                               ;Bloco inicial do programa
     mov ES, AX
   
     call TELA_INICIAL
-    ;call TELA_JOGO
     
-    mov AH, 4ch                     ;Procedimentos de finalizacao do programa
-    mov AL, 00
-    int 21h
+    
+    ;mov AH, 4ch                     ;Procedimentos de finalizacao do programa
+    ;mov AL, 00
+    ;int 21h
 
 end MAIN
 
