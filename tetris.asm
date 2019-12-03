@@ -26,23 +26,15 @@
         PECA_I db '    $','    $','    $',QUADRADO_CHAR,QUADRADO_CHAR,QUADRADO_CHAR,QUADRADO_CHAR,'$'
         PECA_L db '    $','    $','   ',QUADRADO_CHAR,'$',' ',QUADRADO_CHAR,QUADRADO_CHAR,QUADRADO_CHAR,'$'
         PECA_Z db '    $','    $',QUADRADO_CHAR,QUADRADO_CHAR,'  $',' ',QUADRADO_CHAR,QUADRADO_CHAR,' $'
-        
             
     
     ;  ~Variaveis ~ Jogo
     ;------------------------------------
     SCORE_JOGO db 5 dup('0'),'$'  ; Texto do Score
     SCORE_JOGO_HEX dw ?       ; Pontuacao (hex)
-    
-    
-    
+   
 .code
 
-
-
-; ~Variaveis~ globais 
-;----------------------
-len db 0h
 
 PushAXBX macro 
     push AX 
@@ -95,25 +87,23 @@ GOTO_XY proc   ;Macro que seta o cursor em uma posicao X [BL],Y [BH]  AH=02h    
     ret
 endp
 
-
-IMP_PECA proc ; AX  = offset peca ; DH = linha da peca; DL = coluna da peca; BL = cor da peca
+IMP_PECA proc ; SI  = offset peca ; DH = linha da peca; DL = coluna da peca; BL = cor da peca
   PushAXBXCXDX
    mov CX,4
    imprime_peca:
     call IMP_STRING
     inc DH
-    ADD AL,5
+    inc SI
     loop imprime_peca
   PopAXBXCXDX 
   ret
-ret
 endp
 
 
-IMP_STRING proc ; Proc recebe a palavra, posicao e cor para imprimir na tela [AX palavra, DH posx, DL posy, BL cor]
+IMP_STRING proc ; Proc recebe a palavra, posicao e cor para imprimir na tela [SI palavra, DH posx, DL posy, BL cor]
     PushAXBXCXDX
-    mov SI, AX
-    xor AX, AX
+    ;mov SI, AX
+    ;xor AX, AX
     mov  AL, [SI]       ;Aponta para o endereco na memoria da string.
     loop_imp_string:
         call GOTO_XY            ;Chama o macro que seta o cursor [x,y]
@@ -132,7 +122,7 @@ LIMPAR_TELA proc  ; Essa proc limpa a tela do usuario
     mov AX, 0620h
     mov BX, 0h
     mov CX, 0h
-    mov DX, 1928h
+    mov DX, 1998h
     int 10h
     PopAXBXCXDX
     ret
@@ -145,21 +135,21 @@ TELA_JOGO proc
     call LIMPAR_TELA
     
   ; Exibe Score (Pontuacao)
-    mov AX, offset SCORE_JOGO
+    mov SI, offset SCORE_JOGO
     mov DH, 02h
     mov DL, 04h
     mov BL, 06h  
     call IMP_STRING    
     
     ; Exibe Score (String)
-    mov AX, offset SCORE_MSG
+    mov SI, offset SCORE_MSG
     mov DH, 01h
     mov DL, 04h
     mov BL, 07h  
     call IMP_STRING  
     
     ; Linha Superior e inferior do Jogo
-    mov  AX, offset BASE_JOGO
+    mov  SI, offset BASE_JOGO
     mov  DX, 010Ch
     call IMP_STRING
     mov DL, 0Ch
@@ -169,7 +159,7 @@ TELA_JOGO proc
     ; Linhas Laterais Jogo
     mov CX,16h
     LOOP_TELA_JOGO:
-        mov  AX, offset LATERAL_JOGO  
+    mov  SI, offset LATERAL_JOGO  
         inc   CL
         mov DL, 0Ch
         mov  DH, CL
@@ -179,7 +169,7 @@ TELA_JOGO proc
         loop LOOP_TELA_JOGO
     
     ; Linha Superior e inferior Caixa Proxima Pe?a    
-    mov  AX, offset BASE_CAIXA_PECA
+    mov  SI, offset BASE_CAIXA_PECA
     mov  DH, 1h
     mov  DL, 1Bh
     call IMP_STRING
@@ -188,7 +178,7 @@ TELA_JOGO proc
     
     mov CX,06h
     LOOP_TELA_CAIXA:
-    mov  AX, offset LATERAL_CAIXA_PECA  
+    mov  SI, offset LATERAL_CAIXA_PECA  
         inc  CL
         mov  DH, CL
         dec  CL
@@ -206,67 +196,62 @@ TELA_INICIAL proc
    call LIMPAR_TELA
    
    ; Exibe tela inicial para o usuario
-   mov AX, offset TETRIS ; Titulo
+   mov SI, offset TETRIS ; Titulo
    mov BL, 02h
    mov DH, 05h 
    mov DL, 0Bh ;12d
    call IMP_STRING
   
    ; Exibe Tetraminos
-   mov AX, OFFSET PECA_T
+   mov SI, OFFSET PECA_T
    mov BL, 04h
-   mov DH, 07h
+   mov DH, 06h
    mov DL, 06h
    call IMP_PECA
    
-   mov AX, OFFSET PECA_S
+   mov SI, OFFSET PECA_S
    mov BL, 06h
-   ;mov DH, 06h
+   mov DH, 06h
    mov DL, 0Bh
    call IMP_PECA   
    
-   mov AX, OFFSET PECA_Z
+   mov SI, OFFSET PECA_Z
    mov BL, 0Eh
-   ;mov DH, 06h
    mov DL, 0Fh
    call IMP_PECA
    
-   mov AX, OFFSET PECA_I
+   mov SI, OFFSET PECA_I
    mov BL, 02h
-   ;mov DH, 06h
    mov DL, 13h
    call IMP_PECA
    
-   mov AX, OFFSET PECA_O
+   mov SI, OFFSET PECA_O
    mov BL, 03h
-   ;mov DH, 06h
    mov DL, 17h
    call IMP_PECA
    
-   mov AX, OFFSET PECA_L
+   mov SI, OFFSET PECA_L
    mov BL, 01h
-   ;mov DH, 06h
    mov DL, 1Eh
    call IMP_PECA
    
-   mov AX, OFFSET PECA_J
+   mov SI, OFFSET PECA_J
    mov BL, 09h
-   ;mov DH, 06h
    mov DL, 1Bh
    call IMP_PECA
    
-   mov AX, offset JOGAR ; Opcao de Jogar
+   mov SI, offset JOGAR ; Opcao de Jogar
    mov BL, 0Fh
    mov DH, 0Fh 
    mov DL, 0Fh ; 15d
    call IMP_STRING
   
-   mov AX, offset SAIR ; Opcao de Sair
+   mov SI, offset SAIR ; Opcao de Sair
    mov DH, 11h ;17d
    mov DL, 0Fh ; 15d
    call IMP_STRING
 
-   mov AX, offset DESENV ; Mensagem Desenvolvedores
+   mov SI, offset DESENV ; Mensagem Desenvolvedores
    mov BL, 04h
    mov DH, 016h ;22d
    mov DL, 01h 
@@ -311,9 +296,9 @@ MAIN:                               ;Bloco inicial do programa
     call TELA_INICIAL
     ;call TELA_JOGO
     
-    ;mov AH, 4ch                     ;Procedimentos de finalizacao do programa
-    ;mov AL, 00
-    ;int 21h
+    mov AH, 4ch                     ;Procedimentos de finalizacao do programa
+    mov AL, 00
+    int 21h
 
 end MAIN
 
