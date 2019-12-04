@@ -9,7 +9,6 @@
         SAIR  db '(S)air$'
         DESENV db 'Desenvolvido por Marcelo e Franco, 2019$'
     
-    
         ; Layout Jogo
         QUADRADO_CHAR equ 00DBh ; ASCII Character
         LATERAL_JOGO  db QUADRADO_CHAR, '          ', QUADRADO_CHAR,'$'
@@ -17,15 +16,6 @@
         BASE_CAIXA_PECA db 8 dup(QUADRADO_CHAR), '$'
         LATERAL_CAIXA_PECA db QUADRADO_CHAR, '      ', QUADRADO_CHAR,'$'
         SCORE_MSG db 'SCORE$'
-        
-        ; Pecas (Nomes retirados de https://en.wikipedia.org/wiki/Tetromino)
-        ;PECA_S db '    $','    $',' ',QUADRADO_CHAR,QUADRADO_CHAR,' $',QUADRADO_CHAR,QUADRADO_CHAR,'  $'
-        ;PECA_T db '    $','    $','  ',QUADRADO_CHAR,' $',' ',QUADRADO_CHAR,QUADRADO_CHAR,QUADRADO_CHAR,'$'
-        ;PECA_J db '    $','    $',QUADRADO_CHAR,'   $',QUADRADO_CHAR,QUADRADO_CHAR,QUADRADO_CHAR,' ','$'
-        ;PECA_O db '    $','    $',' ',QUADRADO_CHAR,QUADRADO_CHAR,' $',' ',QUADRADO_CHAR,QUADRADO_CHAR,' $'
-        ;PECA_I db '    $','    $','    $',QUADRADO_CHAR,QUADRADO_CHAR,QUADRADO_CHAR,QUADRADO_CHAR,'$'
-        ;PECA_L db '    $','    $','   ',QUADRADO_CHAR,'$',' ',QUADRADO_CHAR,QUADRADO_CHAR,QUADRADO_CHAR,'$'
-        ;PECA_Z db '    $','    $',QUADRADO_CHAR,QUADRADO_CHAR,'  $',' ',QUADRADO_CHAR,QUADRADO_CHAR,' $'
 
         PECA_S db ' ',QUADRADO_CHAR,QUADRADO_CHAR,' $',QUADRADO_CHAR,QUADRADO_CHAR,'  $','    $','    $'
         PECA_T db ' ',QUADRADO_CHAR,'  $',QUADRADO_CHAR,QUADRADO_CHAR,QUADRADO_CHAR,' $','    $','    $'
@@ -82,17 +72,6 @@ GENERATE_RANDOM proc ; Return AL
     push CX
     push DX
     
-    ;MOV AH, 00h  ; interrupts to get system time        
-    ;INT 1AH      ; CX:DX now hold number of clock ticks since midnight      
-    ;mov  ax, dx
-    ;xor  dx, dx
-    ;mov  cx, 6    
-    ;div  cx       ; here dx contains the remainder of the division - from 0 to 6
-    ;add  dl, '0'  ; to ascii from '0' to '6'
-    ;xor  ax, ax
-    ;mov  al, dl
-    ;sub  al, '0'
-    
     mov AX, 0605h
     mov BX, 0000h
     mov CX, 021Ch
@@ -107,6 +86,7 @@ GENERATE_RANDOM proc ; Return AL
     mov  DX, 0h
     div  CX
     mov  AX, DX
+    xor  AH, AH
 
     pop DX
     pop CX
@@ -136,8 +116,8 @@ endp
 
 IMP_PECA_GENERICO proc ; SI  = offset peca ; DH = linha da peca; DL = coluna da peca; BL = cor da peca
   PushAXBXCXDX
-   mov CX,4
-   imprime_peca:
+  mov CX,4
+  imprime_peca:
     call IMP_STRING
     inc DH
     inc SI
@@ -148,48 +128,41 @@ endp
 
 IMP_PECA proc ; al = peca ; ah [0 = escreve; 1 = apaga]
     PushAXBXCXDX
-    
     cmp  AL, 00d ; Peca T
     jne  tenta_peca_s
         mov BL, 04h            
         mov SI, OFFSET PECA_T
         jmp imprime_peca_agora
-    
     tenta_peca_s:
     cmp  AL, 01d ; Peca S
     jne  tenta_peca_z
         mov BL, 06h            
         mov SI, OFFSET PECA_S
         jmp imprime_peca_agora
-    
     tenta_peca_z:    
     cmp  AL, 02d ; Peca Z
     jne  tenta_peca_i
         mov BL, 0Eh            
         mov SI, OFFSET PECA_Z
         jmp imprime_peca_agora
-
     tenta_peca_i:    
     cmp  AL, 03d ; Peca I
     jne  tenta_peca_o
         mov BL, 02h            
         mov SI, OFFSET PECA_I
         jmp imprime_peca_agora
-
     tenta_peca_o:    
     cmp  AL, 04d ; Peca O
     jne  tenta_peca_J
         mov BL, 03h            
         mov SI, OFFSET PECA_O
         jmp imprime_peca_agora
-
     tenta_peca_J:    
     cmp  AL, 05d ; Peca j
     jne  tenta_peca_L
         mov BL, 09h            
         mov SI, OFFSET PECA_J
         jmp imprime_peca_agora
-    
     tenta_peca_L:
         mov BL, 01h            
         mov SI, OFFSET PECA_L
@@ -240,9 +213,15 @@ endp
 
 GERAR_PROXIMA_PECA proc
     PushAXBXCXDX
-    call GENERATE_RANDOM
+    mov SI, offset PROX_PECA_NUM
+    mov AL, [SI]
+    mov AH, 1h
     mov  DH, 04h
     mov  DL, 1Dh
+    call IMP_PECA
+    
+    call GENERATE_RANDOM
+    mov  AH, 0h
     call IMP_PECA
     mov SI, offset PROX_PECA_NUM
     mov [SI], AL
@@ -252,6 +231,7 @@ endp
 
 DELAY proc
     PushAXBXCXDX
+    MOV     AL, 0
     MOV     CX, 0FH
     MOV     DX, 4240H
     MOV     AH, 86H
@@ -290,11 +270,11 @@ ret
 endp
 
 GAMEPLAY proc
-    
+    loop_jogo:
     call DELAY
     call ADD_PROX_PECA
-
     call PEGAR_POSICAO_PECA
+
     mov CX,20d
     loop_cai_peca:
         call DELAY
@@ -304,8 +284,7 @@ GAMEPLAY proc
         mov AH,0
         call IMP_PECA
     loop loop_cai_peca
-    call DELAY
-    call ADD_PROX_PECA
+    jmp loop_jogo
 ret
 endp
 
