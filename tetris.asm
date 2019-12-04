@@ -25,6 +25,13 @@
         PECA_L db '  ',QUADRADO_CHAR,' $',QUADRADO_CHAR,QUADRADO_CHAR,QUADRADO_CHAR,' $','    $','    $'
         PECA_Z db QUADRADO_CHAR,QUADRADO_CHAR,'  $',' ',QUADRADO_CHAR,QUADRADO_CHAR,' $','    $','    $'
 
+        ; Tela de Sa?da do Jogo
+        OBRIGADO    db 'O B R I G A D O$P O R   J O G A R$'
+       
+        ;Tela Game over
+        GAME    db 'G A M E$'
+        OVER    db 'O V E R$
+
     
     ;  ~Variaveis ~ Jogo
     ;------------------------------------
@@ -409,13 +416,99 @@ TELA_INICIAL proc
    loopne LEITURA_MENU
 
    COMECA_JOGO:
-   call TELA_JOGO
-       
+       call TELA_JOGO
    FINALIZOU:
- 
+       call TELA_SAIDA  
    PopAXBXCXDX
    ret
 endp
+
+GAME_OVER proc
+    PushAXBXCXDX
+    call LIMPAR_TELA
+    
+    mov SI, offset GAME  
+    mov BL, 0Ch
+    mov DH, 05h 
+    mov DL, 0Fh
+    call IMP_STRING
+    
+    mov SI, offset OVER  
+    mov BL, 0Ch
+    mov DH, 0Ah 
+    mov DL, 0Fh
+    call IMP_STRING
+    
+    mov SI, offset JOGAR ; Opcao de Jogar
+    mov BL, 0Fh
+    mov DH, 0Fh 
+    mov DL, 0Fh 
+    call IMP_STRING
+  
+    mov SI, offset SAIR ; Opcao de Sair
+    mov DH, 11h 
+    mov DL, 0Fh 
+    call IMP_STRING
+   
+    LEITURA_MENU2:
+        mov AX, 0h
+        int 16h 
+        cmp    AL, 'J'
+        je     COMECA_JOGO2
+        cmp    AL, 'j'
+        je     COMECA_JOGO2
+        cmp    AL, 'S'  
+        je     FINALIZOU2
+        cmp    AL, 's'
+        je     FINALIZOU2  
+        loopne LEITURA_MENU2
+
+        COMECA_JOGO2:
+            call TELA_JOGO
+            loopne LEITURA_MENU2
+        FINALIZOU2:
+            call TELA_SAIDA
+
+    PopAXBXCXDX
+ret
+endp
+
+
+TELA_SAIDA proc
+    PushAXBXCXDX
+    call LIMPAR_TELA
+   
+    ;Mensagem de despedida
+    mov SI, offset OBRIGADO  
+    mov BL, 04h
+    mov DH, 05h 
+    mov DL, 0Bh 
+    call IMP_STRING
+    
+    inc SI
+    mov BL, 02h
+    mov DH, 0Ah 
+    call IMP_STRING
+   
+    mov SI, offset TETRIS 
+    mov BL, 0Eh
+    mov DH, 0Fh 
+    call IMP_STRING
+   
+    mov AL, 01h
+    mov BL, 02h
+    mov DH, 12h 
+    mov DL, 5h
+    mostra_carinhas: 
+        call GOTO_XY
+        call CHAR_DISPLAY
+        add DL, 2h
+        inc BL
+        cmp DL, 21h
+        jne mostra_carinhas
+    PopAXBXCXDX
+ret
+endp 
 
 
 MAIN:                               ;Bloco inicial do programa
@@ -430,11 +523,11 @@ MAIN:                               ;Bloco inicial do programa
     mov ES, AX
   
     call TELA_INICIAL
+    ;call TELA_SAIDA
     
-    
-    ;mov AH, 4ch                     ;Procedimentos de finalizacao do programa
-    ;mov AL, 00
-    ;int 21h
+    mov AH, 4ch                     ;Procedimentos de finalizacao do programa
+    mov AL, 00
+    int 21h
 
 end MAIN
 
