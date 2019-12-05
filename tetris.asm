@@ -22,15 +22,16 @@
         PECA_J db QUADRADO_CHAR,'   $',QUADRADO_CHAR,QUADRADO_CHAR,QUADRADO_CHAR,' ','$','    $','    $'
         PECA_O db ' ',QUADRADO_CHAR,QUADRADO_CHAR,' $',' ',QUADRADO_CHAR,QUADRADO_CHAR,' $','    $','    $'
         PECA_I db '    $',QUADRADO_CHAR,QUADRADO_CHAR,QUADRADO_CHAR,QUADRADO_CHAR,'$','    $','    $'
-        PECA_L db '  ',QUADRADO_CHAR,' $',QUADRADO_CHAR,QUADRADO_CHAR,QUADRADO_CHAR,' $','    $','    $'
         PECA_Z db QUADRADO_CHAR,QUADRADO_CHAR,'  $',' ',QUADRADO_CHAR,QUADRADO_CHAR,' $','    $','    $'
+        PECA_L db '  ',QUADRADO_CHAR,' $',QUADRADO_CHAR,QUADRADO_CHAR,QUADRADO_CHAR,' $','    $','    $'
+        
 
         ; Tela de Sa?da do Jogo
         OBRIGADO    db 'O B R I G A D O$P O R   J O G A R$'
        
         ;Tela Game over
         GAME    db 'G A M E$'
-        OVER    db 'O V E R$
+        OVER    db 'O V E R$'
 
     
     ;  ~Variaveis ~ Jogo
@@ -41,6 +42,17 @@
     CURR_PECA_NUM db ?
     CURR_W db ?
     CURR_H db ?
+    PECA_TEMP db 20 dup(' ')
+
+    LastTime            dd 11111111h  ; Hora do ultimo scroll
+    Result              dd 11111111h  ; Resultado do calculo do tempo
+
+    ; Teclas
+    ;------------------------------------
+    KeyDown             equ 5000h
+    KeyLeft             equ 4B00h
+    KeyRight            equ 4D00h
+    KeySpaceBar         equ 0020h
    
 .code
 
@@ -257,6 +269,14 @@ PEGAR_POSICAO_PECA proc
 ret
 endp
 
+SETAR_POSICAO_ATUAL proc
+    mov SI, offset CURR_W
+    mov [SI], DH
+    mov SI, offset CURR_H
+    mov [SI], DL
+ret
+endp
+
 ADD_PROX_PECA proc
     ; Adiciona Proxima Peca na tela
     PushAXBXCXDX
@@ -266,30 +286,184 @@ ADD_PROX_PECA proc
     mov [SI], AL
     mov DL, 10h
     mov DH, 2h
-    mov SI, offset CURR_W
-    mov [SI], DH
-    mov SI, offset CURR_H
-    mov [SI], DL
+    call SETAR_POSICAO_ATUAL
     call IMP_PECA
     PopAXBXCXDX
     call GERAR_PROXIMA_PECA
 ret
 endp
 
+ROTACIONAR proc ; SI = Peca Fonte ; DI = Peca Destino
+    PushAXBXCXDX
+    ;mov CX, 20d
+    ;mov BX, 0
+    ;loop_rotaciona:
+    ;    mov AX, [SI + BX]
+    ;    mov [DI + BX], AX
+    ;    inc BX
+    ;loop loop_rotaciona
+
+  
+    
+    ; Coloca Cifroes
+    mov BX,4
+    mov CX,4
+    loop_t5:
+        mov AX, [SI + BX]
+        mov [DI + BX], AX
+        add BX,5
+        ;inc SI
+    loop loop_t5
+    
+    mov BX,3
+    mov CX,4
+    loop_t1:
+        mov AX, [SI + BX]
+        mov [DI + BX], AX
+        add BX,5
+        ;inc SI
+    loop loop_t1
+    ;inc SI
+
+    mov BX,2
+    mov CX,4
+    loop_t2:
+        mov AX, [SI + BX]
+        mov [DI + BX], AX
+        add BX,5
+        ;inc SI
+    loop loop_t2
+    ;inc SI
+ 
+
+    mov BX,1
+    mov CX,4
+    loop_t3:
+        mov AX, [SI  + BX]
+        mov [DI + BX], AX
+        add BX,5
+        ;inc SI
+    loop loop_t3
+    ;inc SI
+
+    mov BX,0
+    mov CX,4
+    loop_t4:
+        mov AX, [SI  + BX]
+        mov [DI + BX], AX
+        add BX,5
+        ;inc SI
+    loop loop_t4
+
+    PopAXBXCXDX
+ret
+endp
+
+SaveLastTime proc ;Salva a hora atual na variavel lastTime
+    PushAXBXCXDX
+    mov  AX, 0h                     ; Ajusta para obter Contador de Tempo System-Timer
+    int  1Ah                        ; Realiza a interrupcao
+
+    mov  word ptr LastTime, DX      ; DX = Low-order part of clock count
+    mov  word ptr LastTime + 2, CX  ; CX = High-order part of clock count
+    PopAXBXCXDX
+    ret
+endp
+
+TimeIntervalSinceLastTime proc ; Salva em Result decorrido entre a hora atual e a hora salva em LastTime
+                               ; Retorna em AX o valor dos primeiros 16 bits
+    PushAXBXCXDX
+    mov  AX, 0h
+    int  1Ah
+    mov  AX, word ptr LastTime
+    sub  DX, AX
+    mov  word ptr Result, DX
+    mov  AX, word ptr LastTime + 2
+    sbb  CX, AX
+    mov  word ptr Result + 2, CX
+    PopAXBXCXDX
+    mov  AX, word ptr Result
+    ret
+endp
+
+
+VERIFICA_INPUT proc
+    PushAXBXCX
+    verifica_novamente:
+        push AX                 ; Armazena valor de AX para poder ler do teclado
+        mov AH, 01h             ; Le o buffer
+        mov AL, 00h
+        int 16h                 ; Interrupcao de leitura
+        jz sair_verifica_input  ; Se nao tem nada para ler, pula para fim do laco
+        mov ah, 0   ; get       ; Obtem valor do teclado
+        int 16h 
+        
+        ; Apaga Peca Atual
+        push AX                 ; Empilha valor lido
+        mov SI, offset CURR_PECA_NUM ; Pega numero da peca atual
+        mov AX, [SI]
+        mov AH, 1               ; Ajusta para escrever a peca em preto
+        call IMP_PECA           ; Imprime a peca (como esta preta, vai apagar da tela)
+        pop AX                  ; Desempilha valor lido
+    
+        ; Desloca Peca conforme valor lido no teclado
+        call SaveLastTime 
+        cmp AX, KeyRight
+        je moveRight
+        cmp AX, KeyLeft
+        jne sair_verifica_input
+        dec DL
+        jmp sair_verifica_input
+        moveRight:
+        inc DL
+        
+        sair_verifica_input:    
+        pop AX          ; Retorna valor original do AX antes da leitura do teclado
+        mov AH,0        ; Ajusta parametro para imprimir peca colorida
+        call IMP_PECA   ;Imprime Peca
+        call SETAR_POSICAO_ATUAL
+        
+
+        push AX
+        call TimeIntervalSinceLastTime
+        mov CX, AX
+        pop AX
+        cmp  CX, 0Fh
+        jna  verifica_novamente
+
+    PopAXBXCX
+ret
+endp
+
+DESCE_LINHA proc
+    ; Apaga Peca
+    mov AH,1
+    call IMP_PECA
+
+    ; Desce Linha
+    inc DH
+
+    ; Imprime Peca
+    mov AH,0
+    call IMP_PECA
+    call SaveLastTime  
+ret
+endp
+
 GAMEPLAY proc
     loop_jogo:
-    call DELAY
+    ;call DELAY
     call ADD_PROX_PECA
     call PEGAR_POSICAO_PECA
+    
 
     mov CX,20d
     loop_cai_peca:
         call DELAY
-        mov AH,1
-        call IMP_PECA
-        inc DH
-        mov AH,0
-        call IMP_PECA
+        call SaveLastTime
+        call VERIFICA_INPUT 
+        call DESCE_LINHA   
+
     loop loop_cai_peca
     jmp loop_jogo
 ret
@@ -353,7 +527,6 @@ TELA_JOGO proc
         loop LOOP_TELA_CAIXA
 
     ; Imprime Primeira Peca
-    call GERAR_PROXIMA_PECA
     call GAMEPLAY
     PopAXBXCXDX
     ret
@@ -380,7 +553,20 @@ TELA_INICIAL proc
     add DL, 04d
     inc AL
    loop loop_tetramino_menu
-   
+
+    ; COOMENTADO - ROTACAO
+   ;mov SI, offset PECA_I
+   ;mov DI, offset PECA_TEMP
+   ;call ROTACIONAR
+   ;mov SI, offset PECA_TEMP
+
+   ;mov DH, 09h ; Linha inicial
+   ;mov DL, 05h ; Coluna inicial
+   ;mov BL, 02h
+   ;call IMP_PECA_GENERICO
+
+
+
    ; Opcao de Jogar
    mov SI, offset JOGAR 
    mov BL, 0Fh
