@@ -44,8 +44,8 @@
     CURR_H db ?
     PECA_TEMP db 20 dup(' ')
 
-    LastTime            dd 11111111h  ; Hora do ultimo scroll
-    Result              dd 11111111h  ; Resultado do calculo do tempo
+    HORA_ULTIMA_LEITURA            dd 11111111h  ; Hora do ultimo scroll
+    DIFERENCA_TEMPO              dd 11111111h  ; DIFERENCA_TEMPOado do calculo do tempo
 
     ; Teclas
     ;------------------------------------
@@ -293,96 +293,30 @@ ADD_PROX_PECA proc
 ret
 endp
 
-ROTACIONAR proc ; SI = Peca Fonte ; DI = Peca Destino
-    PushAXBXCXDX
-    ;mov CX, 20d
-    ;mov BX, 0
-    ;loop_rotaciona:
-    ;    mov AX, [SI + BX]
-    ;    mov [DI + BX], AX
-    ;    inc BX
-    ;loop loop_rotaciona
-
-  
-    
-    ; Coloca Cifroes
-    mov BX,4
-    mov CX,4
-    loop_t5:
-        mov AX, [SI + BX]
-        mov [DI + BX], AX
-        add BX,5
-        ;inc SI
-    loop loop_t5
-    
-    mov BX,3
-    mov CX,4
-    loop_t1:
-        mov AX, [SI + BX]
-        mov [DI + BX], AX
-        add BX,5
-        ;inc SI
-    loop loop_t1
-    ;inc SI
-
-    mov BX,2
-    mov CX,4
-    loop_t2:
-        mov AX, [SI + BX]
-        mov [DI + BX], AX
-        add BX,5
-        ;inc SI
-    loop loop_t2
-    ;inc SI
- 
-
-    mov BX,1
-    mov CX,4
-    loop_t3:
-        mov AX, [SI  + BX]
-        mov [DI + BX], AX
-        add BX,5
-        ;inc SI
-    loop loop_t3
-    ;inc SI
-
-    mov BX,0
-    mov CX,4
-    loop_t4:
-        mov AX, [SI  + BX]
-        mov [DI + BX], AX
-        add BX,5
-        ;inc SI
-    loop loop_t4
-
-    PopAXBXCXDX
-ret
-endp
-
-SaveLastTime proc ;Salva a hora atual na variavel lastTime
+ATUALIZA_TEMPO proc ;Salva a hora atual na variavel lastTime
     PushAXBXCXDX
     mov  AX, 0h                     ; Ajusta para obter Contador de Tempo System-Timer
     int  1Ah                        ; Realiza a interrupcao
 
-    mov  word ptr LastTime, DX      ; DX = Low-order part of clock count
-    mov  word ptr LastTime + 2, CX  ; CX = High-order part of clock count
+    mov  word ptr HORA_ULTIMA_LEITURA, DX      ; DX = Low-order part of clock count
+    mov  word ptr HORA_ULTIMA_LEITURA + 2, CX  ; CX = High-order part of clock count
     PopAXBXCXDX
     ret
 endp
 
-TimeIntervalSinceLastTime proc ; Salva em Result decorrido entre a hora atual e a hora salva em LastTime
+VERIFICA_ULTIMO_TEMPO proc ; Salva em DIFERENCA_TEMPO decorrido entre a hora atual e a hora salva em HORA_ULTIMA_LEITURA
                                ; Retorna em AX o valor dos primeiros 16 bits
     PushAXBXCXDX
     mov  AX, 0h
     int  1Ah
-    mov  AX, word ptr LastTime
+    mov  AX, word ptr HORA_ULTIMA_LEITURA
     sub  DX, AX
-    mov  word ptr Result, DX
-    mov  AX, word ptr LastTime + 2
+    mov  word ptr DIFERENCA_TEMPO, DX
+    mov  AX, word ptr HORA_ULTIMA_LEITURA + 2
     sbb  CX, AX
-    mov  word ptr Result + 2, CX
+    mov  word ptr DIFERENCA_TEMPO + 2, CX
     PopAXBXCXDX
-    mov  AX, word ptr Result
+    mov  AX, word ptr DIFERENCA_TEMPO
     ret
 endp
 
@@ -407,16 +341,18 @@ VERIFICA_INPUT proc
         pop AX                  ; Desempilha valor lido
     
         ; Desloca Peca conforme valor lido no teclado
-        call SaveLastTime 
-        cmp AX, KeyRight
-        je moveRight
-        cmp AX, KeyLeft
-        jne sair_verifica_input
-        dec DL
+        call ATUALIZA_TEMPO 
+        cmp AX, KeyRight        ; Verifica se foi seta direita
+        je moveRight            
+        cmp AX, KeyLeft         ; Verifica se foi seta esquerda
+        jne sair_verifica_input ; Nao leu valor valido, portanto, pula outras verificacoes de leitura
+
+        dec DL                  ; Decrementa Coluna
         jmp sair_verifica_input
         moveRight:
         inc DL
-        
+
+
         sair_verifica_input:    
         pop AX          ; Retorna valor original do AX antes da leitura do teclado
         mov AH,0        ; Ajusta parametro para imprimir peca colorida
@@ -425,7 +361,7 @@ VERIFICA_INPUT proc
         
 
         push AX
-        call TimeIntervalSinceLastTime
+        call VERIFICA_ULTIMO_TEMPO
         mov CX, AX
         pop AX
         cmp  CX, 0Fh
@@ -446,7 +382,7 @@ DESCE_LINHA proc
     ; Imprime Peca
     mov AH,0
     call IMP_PECA
-    call SaveLastTime  
+    call ATUALIZA_TEMPO  
 ret
 endp
 
@@ -460,7 +396,7 @@ GAMEPLAY proc
     mov CX,20d
     loop_cai_peca:
         call DELAY
-        call SaveLastTime
+        call ATUALIZA_TEMPO
         call VERIFICA_INPUT 
         call DESCE_LINHA   
 

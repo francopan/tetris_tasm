@@ -1,41 +1,66 @@
-PushAXBXCXDX
 
-    mov BX, 4H ; Variavel de controle do loop externo (contem posicao inicial da linha a ser transposta)
-    transpor_peca: 
-        ; Calcula posicao incial na matriz transposta:  16 - (4* (( INDEX / 4)+1))
-        mov AX, BX
-        push BX
-            mov BL, 4h
-            div BL
-            mov AL, AH
-            xor AH,AH
-        pop BX
+ROTACIONAR proc ; SI = Peca Fonte ; DI = Peca Destino
+    PushAXBXCXDX
+    ;mov CX, 20d
+    ;mov BX, 0
+    ;loop_rotaciona:
+    ;    mov AX, [SI + BX]
+    ;    mov [DI + BX], AX
+    ;    inc BX
+    ;loop loop_rotaciona
 
-        inc AL
-        sal AL, 2 ; sal = shift arithmetic left
-        mov DX, 16d
-        sub DX, AX
+  
+    
+    ; Coloca Cifroes
+    mov BX,4
+    mov CX,4
+    loop_t5:
+        mov AX, [SI + BX]
+        mov [DI + BX], AX
+        add BX,5
+        ;inc SI
+    loop loop_t5
+    
+    mov BX,3
+    mov CX,4
+    loop_t1:
+        mov AX, [SI + BX]
+        mov [DI + BX], AX
+        add BX,5
+        ;inc SI
+    loop loop_t1
+    ;inc SI
 
-        ; Adiciona as proximas quatro linhas
-        mov CX, 4h
-        mov BP, DX
-        transpoe_linha:
-            mov AX, [SI]
-            mov [DI + BP], AX
-            sub BP, 5
-            inc SI
-        loop transpoe_linha
-        inc SI
-        inc BX
-        cmp BX, 8
-    jne transpor_peca
+    mov BX,2
+    mov CX,4
+    loop_t2:
+        mov AX, [SI + BX]
+        mov [DI + BX], AX
+        add BX,5
+        ;inc SI
+    loop loop_t2
+    ;inc SI
+ 
 
-    mov BP, 5
-    mov AX, '$'
-    adiciona_cifrao:
-        mov [DI + BP], AX
-        add BP, 5
-        cmp BP,25
-        jne adiciona_cifrao
+    mov BX,1
+    mov CX,4
+    loop_t3:
+        mov AX, [SI  + BX]
+        mov [DI + BX], AX
+        add BX,5
+        ;inc SI
+    loop loop_t3
+    ;inc SI
+
+    mov BX,0
+    mov CX,4
+    loop_t4:
+        mov AX, [SI  + BX]
+        mov [DI + BX], AX
+        add BX,5
+        ;inc SI
+    loop loop_t4
 
     PopAXBXCXDX
+ret
+endp
