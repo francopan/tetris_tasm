@@ -1,3 +1,10 @@
+; _______________________________________
+; |  UNIVERSIDADE DE CAXIAS DO SUL      |
+; |  FBX4039A - ARQ. DE COMPUTADORES    |
+; |  FRANCO BRUNETTA PAN                |
+; |  MARCELO PADILHA FONTES DE BARROS   |
+; |_____________________________________|
+
 .model small
 .stack 100H
 .data
@@ -9,7 +16,7 @@
         SAIR  db '(S)air$'
         DESENV db 'Desenvolvido por Marcelo e Franco, 2019$'
     
-        ; Layout Jogo
+        ; LAYOUT JOGO
         QUADRADO_CHAR equ 00DBh ; ASCII Character
         LATERAL_JOGO  db QUADRADO_CHAR, '          ', QUADRADO_CHAR,'$'
         BASE_JOGO db 12 dup(QUADRADO_CHAR), '$'
@@ -17,6 +24,7 @@
         LATERAL_CAIXA_PECA db QUADRADO_CHAR, '      ', QUADRADO_CHAR,'$'
         SCORE_MSG db 'SCORE$'
 
+        ; TETRAMINOS
         PECA_S db ' ',QUADRADO_CHAR,QUADRADO_CHAR,' $',QUADRADO_CHAR,QUADRADO_CHAR,'  $','    $','    $'
         PECA_T db ' ',QUADRADO_CHAR,'  $',QUADRADO_CHAR,QUADRADO_CHAR,QUADRADO_CHAR,' $','    $','    $'
         PECA_J db QUADRADO_CHAR,'   $',QUADRADO_CHAR,QUADRADO_CHAR,QUADRADO_CHAR,' ','$','    $','    $'
@@ -25,34 +33,32 @@
         PECA_Z db QUADRADO_CHAR,QUADRADO_CHAR,'  $',' ',QUADRADO_CHAR,QUADRADO_CHAR,' $','    $','    $'
         PECA_L db '  ',QUADRADO_CHAR,' $',QUADRADO_CHAR,QUADRADO_CHAR,QUADRADO_CHAR,' $','    $','    $'
         
-
-        ; Tela de Sa?da do Jogo
+        ;  TELA FINAL
         OBRIGADO    db 'O B R I G A D O$P O R   J O G A R$'
        
-        ;Tela Game over
+        ;  TELA GAME OVER
         GAME    db 'G A M E$'
         OVER    db 'O V E R$'
 
     
     ;  ~Variaveis ~ Jogo
     ;------------------------------------
-    SCORE_JOGO db 5 dup('0'),'$'  ; Texto do Score
-    SCORE_JOGO_HEX dw ?       ; Pontuacao (hex)
-    PROX_PECA_NUM db ?
-    CURR_PECA_NUM db ?
-    CURR_W db ?
-    CURR_H db ?
-    PECA_TEMP db 20 dup(' ')
+        SCORE_JOGO dw ?
+        PROX_PECA_NUM db ?
+        CURR_PECA_NUM db ?
+        CURR_W db ?
+        CURR_H db ?
+        PECA_TEMP db 20 dup(' ')
 
-    HORA_ULTIMA_LEITURA            dd 11111111h  ; Hora do ultimo scroll
-    DIFERENCA_TEMPO              dd 11111111h  ; DIFERENCA_TEMPOado do calculo do tempo
+        HORA_ULTIMA_LEITURA dd 11111111h  ; Hora do ultimo scroll
+        DIFERENCA_TEMPO  dd 11111111h  ; DIFERENCA_TEMPOado do calculo do tempo
 
     ; Teclas
     ;------------------------------------
-    KeyDown             equ 5000h
-    KeyLeft             equ 4B00h
-    KeyRight            equ 4D00h
-    KeySpaceBar         equ 0020h
+        KeyDown             equ 5000h
+        KeyLeft             equ 4B00h
+        KeyRight            equ 4D00h
+        KeySpaceBar         equ 0020h
    
 .code
 
@@ -90,22 +96,17 @@ GENERATE_RANDOM proc ; Return AL
     push BX
     push CX
     push DX
-    
-    mov AX, 0605h
-    mov BX, 0000h
-    mov CX, 021Ch
-    mov DX, 0621h
-    int 10h
-    
+
+    ; Interrupcao do Timer (para gerar valor aleatorio)
     mov  AX, 0h
     int  1Ah
     
-    mov  AX, DX
-    mov  CX, 7h
-    mov  DX, 0h
-    div  CX
-    mov  AX, DX
-    xor  AH, AH
+    mov  AX, DX ; Move valor gerado pela interrupcao para AX. Esse valor sera dividido
+    mov  CX, 7h ; Define Limite do numero a ser gerado
+    mov  DX, 0h ; Define numero inicial
+    div  CX     ; Divide o valor de de AX por CX
+    mov  AX, DX ; Pega valor gerado no resto da divisao e coloca em AX
+    xor  AH, AH ; Remove possivel lixo que exista na parte alta
 
     pop DX
     pop CX
@@ -280,16 +281,16 @@ endp
 ADD_PROX_PECA proc
     ; Adiciona Proxima Peca na tela
     PushAXBXCXDX
-    mov SI, offset PROX_PECA_NUM
-    mov AL, [SI]
-    mov SI, offset CURR_PECA_NUM
-    mov [SI], AL
-    mov DL, 10h
+    mov SI, offset PROX_PECA_NUM    ; Busca endereco na memoria para armazenar proxima peca
+    mov AL, [SI]                    ; Pega valor atual e coloca em AL
+    mov SI, offset CURR_PECA_NUM    ; Busca endereco na memoria para armazenar peca atual
+    mov [SI], AL                    ; Coloca nova peca
+    mov DL, 10h                     ; Ajusta nova posicao x,y
     mov DH, 2h
-    call SETAR_POSICAO_ATUAL
-    call IMP_PECA
+    call SETAR_POSICAO_ATUAL        ; Atualiza posicao atual
+    call IMP_PECA                   ; Imprime peca
     PopAXBXCXDX
-    call GERAR_PROXIMA_PECA
+    call GERAR_PROXIMA_PECA         ; Gera peca da proxima jogada
 ret
 endp
 
@@ -320,9 +321,9 @@ VERIFICA_ULTIMO_TEMPO proc ; Salva em DIFERENCA_TEMPO decorrido entre a hora atu
     ret
 endp
 
-
 VERIFICA_INPUT proc
     PushAXBXCX
+    call ATUALIZA_TEMPO 
     verifica_novamente:
         push AX                 ; Armazena valor de AX para poder ler do teclado
         mov AH, 01h             ; Le o buffer
@@ -341,7 +342,6 @@ VERIFICA_INPUT proc
         pop AX                  ; Desempilha valor lido
     
         ; Desloca Peca conforme valor lido no teclado
-        call ATUALIZA_TEMPO 
         cmp AX, KeyRight        ; Verifica se foi seta direita
         je moveRight            
         cmp AX, KeyLeft         ; Verifica se foi seta esquerda
@@ -379,6 +379,11 @@ DESCE_LINHA proc
     ; Desce Linha
     inc DH
 
+    ; Incrementa Score
+    mov SI, offset SCORE_JOGO
+    inc [SI]
+    call IMP_SCORE 
+    
     ; Imprime Peca
     mov AH,0
     call IMP_PECA
@@ -387,22 +392,59 @@ ret
 endp
 
 GAMEPLAY proc
+    call GERAR_PROXIMA_PECA 
+    call DELAY
     loop_jogo:
-    ;call DELAY
     call ADD_PROX_PECA
     call PEGAR_POSICAO_PECA
-    
 
     mov CX,20d
     loop_cai_peca:
-        call DELAY
         call ATUALIZA_TEMPO
-        call VERIFICA_INPUT 
-        call DESCE_LINHA   
+        call DESCE_LINHA 
+        call VERIFICA_INPUT  
 
     loop loop_cai_peca
     jmp loop_jogo
 ret
+endp
+
+IMP_SCORE proc
+    PushAXBXCXDX
+    mov DH, 02h                     ; Ajusta Linha
+    mov DL, 0Ah                     ; Ajusta Coluna (4 + 6) -> O valor tambem sera usado como divisor
+    mov BL, 06h                     ; Ajusta Contador
+    mov  CX, word ptr SCORE_JOGO
+    
+    LOOP_DIGITOS_SCORE:
+        mov  AX, CX
+        push DX
+        mov  DX, 0h
+        mov  CX, 0Ah                    ; Seta o valor do divisor = 10d
+        div  CX                         ; Divide AX por CX
+        mov  CX, AX                     ; Salva valor do resultado em CX
+        mov  AX, DX                     ; Pega o resultado da divisao e armazena em AX
+        add  AL, '0'                    ; Soma '0' para printar caractere correto
+        mov  AH, 0Fh
+        pop  DX
+
+        ; Imprime Valor na Tela
+        push CX                         ; Guarda CX
+        mov CX,1                        ; Informa que eh apenas um caracter a ser apresentado
+        sub DX,2       
+        call GOTO_XY                    ; Vai para posicao
+        call CHAR_DISPLAY               ; Imprime
+        add DX,2
+        pop CX
+
+        cmp  DL, BL
+        je   FIM_IMP_SCORE
+        dec  DL
+    jmp  LOOP_DIGITOS_SCORE
+    
+    FIM_IMP_SCORE:          
+    popAXBXCXDX       
+    ret  
 endp
 
 TELA_JOGO proc
@@ -410,11 +452,8 @@ TELA_JOGO proc
     call LIMPAR_TELA
     
     ; Exibe Score (Pontuacao)
-    mov SI, offset SCORE_JOGO
-    mov DH, 02h
-    mov DL, 04h
-    mov BL, 06h  
-    call IMP_STRING    
+    mov  word ptr SCORE_JOGO, 0d
+    call IMP_SCORE    
     
     ; Exibe Score (String)
     mov SI, offset SCORE_MSG
@@ -489,19 +528,6 @@ TELA_INICIAL proc
     add DL, 04d
     inc AL
    loop loop_tetramino_menu
-
-    ; COOMENTADO - ROTACAO
-   ;mov SI, offset PECA_I
-   ;mov DI, offset PECA_TEMP
-   ;call ROTACIONAR
-   ;mov SI, offset PECA_TEMP
-
-   ;mov DH, 09h ; Linha inicial
-   ;mov DL, 05h ; Coluna inicial
-   ;mov BL, 02h
-   ;call IMP_PECA_GENERICO
-
-
 
    ; Opcao de Jogar
    mov SI, offset JOGAR 
@@ -645,7 +671,6 @@ MAIN:                               ;Bloco inicial do programa
     mov ES, AX
   
     call TELA_INICIAL
-    ;call TELA_SAIDA
     
     mov AH, 4ch                     ;Procedimentos de finalizacao do programa
     mov AL, 00
