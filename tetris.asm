@@ -25,12 +25,12 @@
         SCORE_MSG db 'SCORE$'
 
         ; TETRAMINOS
-        PECA_S db ' ',QUADRADO_CHAR,QUADRADO_CHAR,' $',QUADRADO_CHAR,QUADRADO_CHAR,'  $','    $','    $'
         PECA_T db ' ',QUADRADO_CHAR,'  $',QUADRADO_CHAR,QUADRADO_CHAR,QUADRADO_CHAR,' $','    $','    $'
-        PECA_J db QUADRADO_CHAR,'   $',QUADRADO_CHAR,QUADRADO_CHAR,QUADRADO_CHAR,' ','$','    $','    $'
-        PECA_O db ' ',QUADRADO_CHAR,QUADRADO_CHAR,' $',' ',QUADRADO_CHAR,QUADRADO_CHAR,' $','    $','    $'
-        PECA_I db '    $',QUADRADO_CHAR,QUADRADO_CHAR,QUADRADO_CHAR,QUADRADO_CHAR,'$','    $','    $'
+        PECA_S db ' ',QUADRADO_CHAR,QUADRADO_CHAR,' $',QUADRADO_CHAR,QUADRADO_CHAR,'  $','    $','    $'
         PECA_Z db QUADRADO_CHAR,QUADRADO_CHAR,'  $',' ',QUADRADO_CHAR,QUADRADO_CHAR,' $','    $','    $'
+        PECA_I db '    $',QUADRADO_CHAR,QUADRADO_CHAR,QUADRADO_CHAR,QUADRADO_CHAR,'$','    $','    $'
+        PECA_O db ' ',QUADRADO_CHAR,QUADRADO_CHAR,' $',' ',QUADRADO_CHAR,QUADRADO_CHAR,' $','    $','    $'
+        PECA_J db QUADRADO_CHAR,'   $',QUADRADO_CHAR,QUADRADO_CHAR,QUADRADO_CHAR,' ','$','    $','    $'
         PECA_L db '  ',QUADRADO_CHAR,' $',QUADRADO_CHAR,QUADRADO_CHAR,QUADRADO_CHAR,' $','    $','    $'
         
         ;  TELA FINAL
@@ -118,6 +118,7 @@ CHAR_DISPLAY proc  ; Proc que imprime na tela UM caractere em determinada cor (B
     PushAXBXCX
     xor  AH, AH
     xor  CX, CX
+    mov  BH , 0
     mov  AH, 09h            ;Servico da interrupcao 10h para imprimir caractere na tela  
     mov  CX, 01h            ;Numero de vezes que o caractere sera mostrado na tela
     int  10h                ;Interrupcao de video 10h   
@@ -294,6 +295,83 @@ ADD_PROX_PECA proc
 ret
 endp
 
+VERIFICA_COLISAO proc  ; Recebe posicao em DX e verifica se tetramino ira colidir; Retorna resultado em AX
+    PushAXBXCXDX
+    mov CX,DX                       ; Armazena posicao recebida
+    call PEGAR_POSICAO_PECA         ; Pega Peca e posicao atual
+    
+    push DX
+    mov BX, 20d                     ; Deslocamento
+    mul BX                          ; Pega peca atraves do numero * deslocamento
+    mov SI, offset PECA_T
+    xor AH,AH
+    add SI, AX                      ; Guarda endereco da peca
+    pop DX
+    verifica_desclocamento:
+        cmp CH, DH                  ; Verifica se deslocamento foi para baixo
+        jne checkBellow 
+        cmp CL, DL
+        jns checkRight              ; Verifica se deslocamento foi para a esquerda
+        jmp checkLeft               ; Verifica se deslocamento foi para a direita
+    
+    checkBellow:   
+        ;mov BX, DX
+        ;mov DX, CX
+        inc DH
+        mov CX, 16d                 ; Estabelece contador
+
+        innerCheckBellow:
+            
+            mov AX, [SI]            ; Obtem valor da posicao da peca 
+            xor AH,AH
+
+            cmp AX, QUADRADO_CHAR   ; Verifica se posicao da peca eh um quadrado
+            jne innerBellowNoValue  ; Se nao for continua loop
+
+            push AX
+            add DH,2
+            sub DL, 3
+            call GOTO_XY            ; Posiciona cursor no elemento desejado
+            mov AH, 08h             ; Instrucao para leitura do caractere da tela 
+            int 10H 
+            mov BX,AX               ; Guarda valor do pixel lido em BX
+            sub DH,2
+            add DL, 3
+            call CHAR_DISPLAY
+            pop AX
+            cmp BH, 0h
+            je innerBellowNoValue
+            xor BH,BH
+            cmp BX, QUADRADO_CHAR
+            jne achou
+             
+            innerBellowNoValue:
+            inc SI
+            inc DL
+            cmp [SI], '$'
+            jne skipIncLine
+            inc DH
+            sub DL, 4
+            inc SI
+            skipIncLine:
+        loop innerCheckBellow
+        jmp fim_verifica_colisao
+    checkLeft:
+          
+    checkRight:
+    
+    achou:
+        mov SI, offset SCORE_JOGO
+        add [SI], 100d
+        call IMP_SCORE
+      
+
+    fim_verifica_colisao:
+
+    popAXBXCXDX
+ret
+endp
+
 ATUALIZA_TEMPO proc ;Salva a hora atual na variavel lastTime
     PushAXBXCXDX
     mov  AX, 0h                     ; Ajusta para obter Contador de Tempo System-Timer
@@ -306,7 +384,6 @@ ATUALIZA_TEMPO proc ;Salva a hora atual na variavel lastTime
 endp
 
 VERIFICA_ULTIMO_TEMPO proc ; Salva em DIFERENCA_TEMPO decorrido entre a hora atual e a hora salva em HORA_ULTIMA_LEITURA
-                               ; Retorna em AX o valor dos primeiros 16 bits
     PushAXBXCXDX
     mov  AX, 0h
     int  1Ah
@@ -348,18 +425,24 @@ VERIFICA_INPUT proc
         jne sair_verifica_input ; Nao leu valor valido, portanto, pula outras verificacoes de leitura
 
         dec DL                  ; Decrementa Coluna
-        jmp sair_verifica_input
+        ;call VERIFICA_COLISAO
+        jmp imprime_peca_verifica
         moveRight:
         inc DL
+        ;call VERIFICA_COLISAO
 
 
-        sair_verifica_input:    
-        pop AX          ; Retorna valor original do AX antes da leitura do teclado
+        imprime_peca_verifica:
+        pop AX
         mov AH,0        ; Ajusta parametro para imprimir peca colorida
         call IMP_PECA   ;Imprime Peca
         call SETAR_POSICAO_ATUAL
-        
+        jmp sair_verifica_input_2
 
+        sair_verifica_input:    
+        pop AX          ; Retorna valor original do AX antes da leitura do teclado
+        
+        sair_verifica_input_2:
         push AX
         call VERIFICA_ULTIMO_TEMPO
         mov CX, AX
@@ -379,6 +462,8 @@ DESCE_LINHA proc
     ; Desce Linha
     inc DH
 
+    ;call VERIFICA_COLISAO
+
     ; Incrementa Score
     mov SI, offset SCORE_JOGO
     inc [SI]
@@ -387,6 +472,7 @@ DESCE_LINHA proc
     ; Imprime Peca
     mov AH,0
     call IMP_PECA
+    call SETAR_POSICAO_ATUAL
     call ATUALIZA_TEMPO  
 ret
 endp
@@ -413,8 +499,8 @@ IMP_SCORE proc
     PushAXBXCXDX
     mov DH, 02h                     ; Ajusta Linha
     mov DL, 0Ah                     ; Ajusta Coluna (4 + 6) -> O valor tambem sera usado como divisor
-    mov BL, 06h                     ; Ajusta Contador
-    mov  CX, word ptr SCORE_JOGO
+    mov BL, 06h                     ; Ajusta Limite minimo caracteres
+    mov CX, word ptr SCORE_JOGO
     
     LOOP_DIGITOS_SCORE:
         mov  AX, CX
@@ -425,7 +511,6 @@ IMP_SCORE proc
         mov  CX, AX                     ; Salva valor do resultado em CX
         mov  AX, DX                     ; Pega o resultado da divisao e armazena em AX
         add  AL, '0'                    ; Soma '0' para printar caractere correto
-        mov  AH, 0Fh
         pop  DX
 
         ; Imprime Valor na Tela
@@ -436,7 +521,6 @@ IMP_SCORE proc
         call CHAR_DISPLAY               ; Imprime
         add DX,2
         pop CX
-
         cmp  DL, BL
         je   FIM_IMP_SCORE
         dec  DL
@@ -670,8 +754,8 @@ MAIN:                               ;Bloco inicial do programa
     mov AX, 0b800h                  ;Inicio da regiao da memoria de video
     mov ES, AX
   
-    call TELA_INICIAL
-    
+    ;call TELA_INICIAL
+    call GAME_OVER
     mov AH, 4ch                     ;Procedimentos de finalizacao do programa
     mov AL, 00
     int 21h
