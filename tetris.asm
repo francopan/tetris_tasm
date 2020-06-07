@@ -754,8 +754,8 @@ MAIN:                               ;Bloco inicial do programa
     mov AX, 0b800h                  ;Inicio da regiao da memoria de video
     mov ES, AX
   
-    ;call TELA_INICIAL
-    call GAME_OVER
+    call TELA_INICIAL
+    ;call GAME_OVER
     mov AH, 4ch                     ;Procedimentos de finalizacao do programa
     mov AL, 00
     int 21h
